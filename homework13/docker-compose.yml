@@ -1,0 +1,122 @@
+version: '3.8'
+
+networks:
+  test-network:
+    name: test-network
+    external: true
+
+services:
+#  spark:
+#    image: docker.io/bitnami/spark:3
+#    networks:
+#      - test-network
+#    environment:
+#      - SPARK_MODE=master
+#      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+#      - SPARK_RPC_ENCRYPTION_ENABLED=no
+#      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+#      - SPARK_SSL_ENABLED=no
+#    ports:
+#      - '8080:8080'
+#
+#  spark-worker:
+#    image: docker.io/bitnami/spark:3
+#    networks:
+#      - test-network
+#    environment:
+#      - SPARK_MODE=worker
+#      - SPARK_MASTER_URL=spark://spark:7077
+#      - SPARK_WORKER_MEMORY=1G
+#      - SPARK_WORKER_CORES=1
+#      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+#      - SPARK_RPC_ENCRYPTION_ENABLED=no
+#      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+#      - SPARK_SSL_ENABLED=no
+#
+#  cassandra-1:
+#    image: "cassandra:latest"
+#    container_name: "cassandra-1"
+#    ports:
+#      - "7000:7000"
+#      - "9042:9042"
+#    networks:
+#      - test-network
+#    environment:
+#      - CASSANDRA_START_RPC=true
+#      - CASSANDRA_RPC_ADDRESS=0.0.0.0
+#      - CASSANDRA_LISTEN_ADDRESS=auto
+#      - CASSANDRA_CLUSTER_NAME=my-cluster
+#      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+#      - CASSANDRA_DC=my-datacenter-1
+#    volumes:
+#      - cassandra-node-1:/var/lib/cassandra:rw
+#    restart: on-failure
+#    healthcheck:
+#      test: ["CMD-SHELL", "nodetool status"]
+#      interval: 2m
+#      start_period: 2m
+#      timeout: 10s
+#      retries: 3
+
+  zookeeper-server:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper-server
+    networks:
+      - test-network
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka-server
+    networks:
+      - test-network
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-server:2181
+    depends_on:
+      - zookeeper-server
+
+  kafka-create-input-topic:
+    image: bitnami/kafka:latest
+    networks:
+      - test-network
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-server:2181
+    command: [
+      "kafka-topics.sh", "--create", "--bootstrap-server", "kafka-server:9092",
+      "--replication-factor", "1",
+      "--partitions", "3",
+      "--topic", "input",
+    ]
+    depends_on:
+      - kafka
+
+  kafka-create-processed-topic:
+    image: bitnami/kafka:latest
+    networks:
+      - test-network
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-server:2181
+    command: [
+      "kafka-topics.sh", "--create", "--bootstrap-server", "kafka-server:9092",
+      "--replication-factor", "1",
+      "--partitions", "3",
+      "--topic", "processed",
+    ]
+    depends_on:
+      - kafka
+
+  data-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile_data-generator
+    networks:
+      - test-network
+    depends_on:
+      - kafka-create-input-topic
+      - kafka-create-processed-topic
+#    command: ["python", "./data-generator.py"]
+
+volumes:
+  cassandra-node-1:

@@ -1,0 +1,14 @@
+FROM python:3.8-slim-buster
+
+# Встановлення необхідних пакетів
+RUN apt-get update && \
+    apt-get install -y gcc && \
+    pip install --no-cache-dir requests kafka-python && \
+    apt-get remove -y gcc && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY data_generator.py /app/data_generator.py
+
+CMD ["bash", "-c", "sleep 10 && python /app/data_generator.py"]
