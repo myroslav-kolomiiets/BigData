@@ -1,0 +1,21 @@
+version: '3.3'
+
+services:
+  cassandra:
+    image: cassandra:latest
+    environment:
+      - CASSANDRA_SEEDS=cassandra
+    ports:
+      - "9042:9042"
+
+  nodejs-rest-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - cassandra
+    environment:
+      - CASSANDRA_CONTACT_POINTS=cassandra
+      - CASSANDRA_KEYSPACE=reviews_keyspace
