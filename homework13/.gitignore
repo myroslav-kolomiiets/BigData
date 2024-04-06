@@ -1,0 +1,5 @@
+data
+jars
+kafka_checkpoint
+spark-checkpoint
+cache
